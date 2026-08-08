@@ -58,13 +58,23 @@ jobs:
       # different directory than the HTML, and the emitted canonical URLs are
       # absolute. Serving the build sidesteps all three and checks the addresses
       # readers actually get.
+      # Runs the standalone server, not `next start` — the latter refuses to work
+      # with output: 'standalone' and says so only in its own log.
+      #
+      # This is the better arrangement anyway: the links are checked against the
+      # exact artefact the Docker image serves, so a problem that exists only in
+      # the deployed bundle cannot hide behind a dev server. The two `cp` lines
+      # mirror what the Dockerfile's runner stage copies.
+      #
       # setsid + nohup, not a bare `&`. A background job started with `&` belongs
       # to the step's process group and dies when the step's shell exits, so the
-      # next step finds nothing listening — which is exactly how this failed the
-      # first time, and it failed as an empty file rather than as an error.
+      # next step finds nothing listening.
       - name: Start the built site
         run: |
-          setsid nohup npx next start -p 3000 > server.log 2>&1 < /dev/null &
+          cp -r .next/static .next/standalone/.next/static
+          cp -r public .next/standalone/public
+          PORT=3000 HOSTNAME=127.0.0.1 \
+            setsid nohup node .next/standalone/server.js > server.log 2>&1 < /dev/null &
           for i in $(seq 1 60); do
             if curl -sf -o /dev/null http://localhost:3000/; then
               echo "server up after ${i}s"
@@ -114,4 +124,4 @@ jobs:
 
       - name: Stop the built site
         if: always()
-        run: pkill -f 'next start' || true
+        run: pkill -f 'standalone/server.js' || true
