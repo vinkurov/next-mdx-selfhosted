@@ -49,18 +49,53 @@ jobs:
 
       - name: Build
         run: npm run build
+        env:
+          NEXT_PUBLIC_SITE_URL: http://localhost:3000
 
-      # Runs against the built HTML rather than the MDX sources, so it sees the
-      # URLs that were actually emitted — including anything a plugin rewrote.
+      # Links are checked against a running server, not against the files in
+      # .next. Checking the files does not work: root-relative hrefs like /about
+      # have no document root to resolve against, /_next/static lives in a
+      # different directory than the HTML, and the emitted canonical URLs are
+      # absolute. Serving the build sidesteps all three and checks the addresses
+      # readers actually get.
+      - name: Start the built site
+        run: |
+          npx next start -p 3000 &
+          echo $! > .server.pid
+          for i in $(seq 1 60); do
+            if curl -sf -o /dev/null http://localhost:3000/; then
+              echo "server up after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "server did not start within 60s" >&2
+          exit 1
+
+      # The page list comes from the sitemap, which is itself generated from the
+      # content layer. So a new article is link-checked automatically, and a page
+      # missing from the sitemap is a separate bug this would also surface.
+      - name: Collect page URLs
+        run: |
+          curl -sf http://localhost:3000/sitemap.xml \
+            | grep -o '<loc>[^<]*</loc>' \
+            | sed 's|</*loc>||g' \
+            > link-check-urls.txt
+          test -s link-check-urls.txt
+          cat link-check-urls.txt
+
       - name: Check links
         uses: lycheeverse/lychee-action@v2
         with:
           args: >-
             --no-progress
             --include-fragments
-            --exclude-path .next/server/app/_not-found.html
-            --exclude-path .next/server/app/_global-error.html
-            '.next/server/app/**/*.html'
-            'README.md'
-            'docs/**/*.md'
+            --max-retries 2
+            link-check-urls.txt
+            README.md
+            docs/architecture.md
           fail: true
+
+      - name: Stop the built site
+        if: always()
+        run: kill "$(cat .server.pid)" || true
