@@ -130,5 +130,41 @@ jobs:
           echo "проверяются страницы:"
           cat link-check-urls.txt
 
-          ./lychee --no-progress --include-fragments --max-retries 2 \
-            link-check-urls.txt README.md docs/architecture.md
+          # The pages are downloaded and handed to lychee as files, rather than
+          # passing the URL list directly. lychee checks the links it finds in its
+          # inputs and does not crawl what it fetches — so a list of URLs only
+          # proves those pages respond, which is not what "link checking" means.
+          # Verified the hard way: a deliberately broken link in an article passed
+          # a run configured that way.
+          #
+          # --base-url resolves the root-relative hrefs in the downloaded HTML
+          # back to the running server. Without it every /articles/... and
+          # /_next/... is unresolvable in a local file.
+          mkdir -p link-check-pages
+          page=0
+          while read -r url; do
+            page=$((page + 1))
+            curl -sf "$url" -o "link-check-pages/page-${page}.html"
+          done < link-check-urls.txt
+
+          # Two runs, because the two kinds of input resolve links differently and
+          # one --base-url cannot be right for both. In the downloaded pages an
+          # href like /articles/x is a server path; in README.md a link like
+          # src/content/index.ts is a file in the repository, and resolving that
+          # against the server turns every one of them into a 404.
+          #
+          # Fragments are deliberately not checked. A downloaded page has no
+          # memory of the URL it came from, so an on-page anchor like #решение-1
+          # would resolve against the home page instead of its own document, and
+          # every heading anchor would report as broken. Those anchors are
+          # generated mechanically by rehype-autolink-headings from the heading
+          # they sit on, so there is nothing to catch — only noise, and a noisy
+          # check is one people learn to ignore.
+          echo "--- ссылки на отданных страницах"
+          ./lychee --no-progress --max-retries 2 \
+            --base-url http://localhost:3000 \
+            link-check-pages/*.html
+
+          echo "--- ссылки в документации репозитория"
+          ./lychee --no-progress --max-retries 2 \
+            README.md docs/architecture.md
