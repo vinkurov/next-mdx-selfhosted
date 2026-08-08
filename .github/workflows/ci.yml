@@ -93,8 +93,16 @@ jobs:
           server_pid=$!
           trap 'kill "$server_pid" 2>/dev/null || true' EXIT
 
+          # `if`, not `curl ... && break`. Under `set -e` an AND-list whose first
+          # command fails makes the whole statement non-zero and aborts the
+          # script — so the wait loop would exit with curl's status on its first
+          # iteration, before the server had a chance to bind. A failure inside an
+          # `if` condition is explicitly exempt.
           for i in $(seq 1 60); do
-            curl -sf -o /dev/null http://localhost:3000/ && break
+            if curl -sf -o /dev/null http://localhost:3000/; then
+              echo "server up after ${i}s"
+              break
+            fi
             if [ "$i" -eq 60 ]; then
               echo "server did not start within 60s" >&2
               cat server.log >&2
@@ -107,8 +115,12 @@ jobs:
           # content layer — so a new article is link-checked automatically, and a
           # page missing from the sitemap is a separate bug this also surfaces.
           curl -sf http://localhost:3000/sitemap.xml -o sitemap-snapshot.xml
-          grep -o '<loc>[^<]*</loc>' sitemap-snapshot.xml | sed 's|</*loc>||g' \
-            > link-check-urls.txt
+
+          # `|| true` because grep exits non-zero when it matches nothing, and
+          # with pipefail that would abort before the check below can print the
+          # sitemap that was actually received.
+          { grep -o '<loc>[^<]*</loc>' sitemap-snapshot.xml || true; } \
+            | sed 's|</*loc>||g' > link-check-urls.txt
 
           if [ ! -s link-check-urls.txt ]; then
             echo "no <loc> entries found in the sitemap:" >&2
