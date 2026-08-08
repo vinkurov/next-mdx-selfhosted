@@ -147,6 +147,13 @@ jobs:
             curl -sf "$url" -o "link-check-pages/page-${page}.html"
           done < link-check-urls.txt
 
-          ./lychee --no-progress --include-fragments --max-retries 2 \
+          # Fragments are deliberately not checked. A downloaded page has no
+          # memory of the URL it came from, so --base-url resolves an on-page
+          # anchor like #решение-1 against the home page instead of its own
+          # document, and every heading anchor reports as broken. Those anchors
+          # are generated mechanically by rehype-autolink-headings from the
+          # heading they sit on, so there is nothing a check could catch — only
+          # noise that would train people to ignore this step.
+          ./lychee --no-progress --max-retries 2 \
             --base-url http://localhost:3000 \
             link-check-pages/*.html README.md docs/architecture.md
