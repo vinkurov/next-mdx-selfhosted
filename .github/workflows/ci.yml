@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # `npm ci` rather than `npm install`: it installs exactly the lockfile and
+      # fails if package.json and the lock have drifted, which is the whole point
+      # of pinning versions in the first place.
+      - run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      # Content checks run before the build on purpose. A malformed document then
+      # fails in seconds with a readable message, instead of several minutes later
+      # inside a bundler stack trace.
+      - name: Validate content
+        run: npm run content:check
+
+      - name: Check media references
+        run: npm run media:check
+
+      - name: Test
+        run: npm run test
+
+      - name: Build
+        run: npm run build
+
+      # Runs against the built HTML rather than the MDX sources, so it sees the
+      # URLs that were actually emitted — including anything a plugin rewrote.
+      - name: Check links
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: >-
+            --no-progress
+            --include-fragments
+            --exclude-path .next/server/app/_not-found.html
+            --exclude-path .next/server/app/_global-error.html
+            '.next/server/app/**/*.html'
+            'README.md'
+            'docs/**/*.md'
+          fail: true
