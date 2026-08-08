@@ -1,0 +1,50 @@
+{
+  "name": "next-mdx-selfhosted",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Reference architecture for a self-hosted Next.js content site with git-based MDX content and build-time validation.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.9.0"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "content:check": "tsx scripts/validate-content.ts",
+    "media:check": "tsx scripts/check-media.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "dependencies": {
+    "@mdx-js/mdx": "3.1.1",
+    "gray-matter": "4.0.3",
+    "next": "16.3.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "rehype-autolink-headings": "7.1.0",
+    "rehype-pretty-code": "0.14.5",
+    "rehype-slug": "6.0.0",
+    "remark-gfm": "4.0.1",
+    "sharp": "0.35.3",
+    "shiki": "4.4.2",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "4.3.3",
+    "@types/node": "22.20.1",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.4",
+    "eslint": "9.39.5",
+    "eslint-config-next": "16.3.0",
+    "prettier": "3.9.6",
+    "tailwindcss": "4.3.3",
+    "tsx": "4.23.11",
+    "typescript": "5.9.3",
+    "vitest": "4.1.10"
+  }
+}

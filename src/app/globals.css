@@ -1,0 +1,129 @@
+@import 'tailwindcss';
+
+/*
+ * Tailwind 4 is configured here rather than in a JavaScript config file. Design
+ * tokens declared in `@theme` become both CSS custom properties and Tailwind
+ * utilities, so there is one source of truth instead of two that drift.
+ */
+@theme {
+  --color-ink: #16181d;
+  --color-ink-muted: #5b6270;
+  --color-paper: #ffffff;
+  --color-paper-sunken: #f6f7f9;
+  --color-rule: #e3e6eb;
+  --color-accent: #1f5fd0;
+
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial,
+    sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  @theme {
+    --color-ink: #e8eaee;
+    --color-ink-muted: #99a1b0;
+    --color-paper: #101216;
+    --color-paper-sunken: #171a20;
+    --color-rule: #262b34;
+    --color-accent: #6fa2ff;
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/*
+ * Anchors injected by rehype-autolink-headings. Hidden until the heading is
+ * hovered or the link itself is focused, so keyboard users can still reach them.
+ */
+.heading-anchor {
+  margin-left: 0.35rem;
+  color: var(--color-ink-muted);
+  opacity: 0;
+  transition: opacity 120ms ease-in-out;
+  text-decoration: none;
+}
+
+h2:hover > .heading-anchor,
+h3:hover > .heading-anchor,
+h4:hover > .heading-anchor,
+.heading-anchor:focus-visible {
+  opacity: 1;
+}
+
+/*
+ * rehype-pretty-code emits these attributes at build time. Themes for light and
+ * dark are both compiled into the markup; the browser picks one with CSS and
+ * ships zero JavaScript for highlighting.
+ */
+[data-rehype-pretty-code-figure] pre {
+  overflow-x: auto;
+  padding: 1rem 0;
+  border-radius: 0.5rem;
+  background: var(--shiki-light-bg);
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+[data-rehype-pretty-code-figure] code {
+  display: grid;
+  font-family: var(--font-mono);
+  counter-reset: line;
+}
+
+[data-rehype-pretty-code-figure] code [data-line] {
+  padding: 0 1rem;
+  border-left: 2px solid transparent;
+}
+
+[data-rehype-pretty-code-figure] code [data-highlighted-line] {
+  border-left-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+}
+
+[data-rehype-pretty-code-figure] span[data-line] span {
+  color: var(--shiki-light);
+}
+
+[data-rehype-pretty-code-title] {
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem 0.5rem 0 0;
+  background: var(--color-paper-sunken);
+  border: 1px solid var(--color-rule);
+  border-bottom: 0;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  color: var(--color-ink-muted);
+}
+
+[data-rehype-pretty-code-title] + pre {
+  border-radius: 0 0 0.5rem 0.5rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-rehype-pretty-code-figure] pre {
+    background: var(--shiki-dark-bg);
+  }
+
+  [data-rehype-pretty-code-figure] span[data-line] span {
+    color: var(--shiki-dark);
+  }
+}
+
+code:not(pre code) {
+  padding: 0.15em 0.35em;
+  border-radius: 0.25rem;
+  background: var(--color-paper-sunken);
+  border: 1px solid var(--color-rule);
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+}
