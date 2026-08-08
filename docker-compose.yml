@@ -1,0 +1,44 @@
+services:
+  web:
+    build:
+      context: .
+    image: next-mdx-selfhosted:local
+    restart: unless-stopped
+    environment:
+      # Read at build time for sitemap and Open Graph URLs, and at runtime by
+      # mediaUrl(). Override in a .env file next to this one.
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost}
+      MEDIA_BASE_URL: ${MEDIA_BASE_URL:-/media}
+    volumes:
+      # Optimised image derivatives survive a container restart. Without this,
+      # every deploy re-encodes every image on first request.
+      - next-image-cache:/app/.next/cache/images
+    # No ports published. The only way in is through Caddy, so there is no
+    # second, unencrypted door left open on the host by accident.
+    expose:
+      - '3000'
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - web
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-localhost}
+    ports:
+      - '80:80'
+      - '443:443'
+      # QUIC for HTTP/3. UDP, and easy to forget — without it clients silently
+      # fall back to HTTP/2 and the benefit is invisible rather than broken.
+      - '443:443/udp'
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # Certificates and OCSP staples live here. Losing this volume means
+      # re-requesting certificates on every restart, which runs into rate limits.
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  next-image-cache:
+  caddy-data:
+  caddy-config:
