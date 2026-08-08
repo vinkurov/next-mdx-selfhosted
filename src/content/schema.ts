@@ -23,17 +23,44 @@ const DATE_FORMAT = /^\d{4}-\d{2}-\d{2}$/
  * sorting and into sitemap `lastModified` as an `Invalid Date`. Checking that
  * the parsed date round-trips back to the same digits is what rejects them.
  */
-const isoDate = z
-  .string()
-  .regex(DATE_FORMAT, 'ожидается формат YYYY-MM-DD')
-  .refine(
-    // Guarded by the format test so a malformed date reports one problem rather
-    // than two: without the guard, "12.03.2026" fails the regex *and* the
-    // calendar check, and the reader has to work out that these are the same
-    // mistake described twice.
-    (value) => !DATE_FORMAT.test(value) || isRealCalendarDate(value),
-    'такой календарной даты не существует',
-  )
+/**
+ * Normalises what YAML hands us for a date field.
+ *
+ * This exists because of a detail that costs an afternoon to find. YAML types
+ * scalars, and an unquoted `2026-02-18` is a *timestamp*, so `gray-matter` (via
+ * js-yaml) delivers a JavaScript `Date` rather than the string the schema
+ * expects. Requiring authors to write `date: '2026-02-18'` would work and would
+ * be forgotten roughly every other article.
+ *
+ * A bare `YYYY-MM-DD` becomes midnight UTC exactly, so it round-trips back to
+ * the same digits. Anything that carried a time or an offset does not, and is
+ * deliberately left as a full ISO string so that the format check rejects it and
+ * the author sees what they actually wrote. That case is rejected rather than
+ * truncated because `2026-02-19T01:00:00+03:00` is 2026-02-18 in UTC — the
+ * calendar day depends on the reader's timezone, and a publication date that
+ * shifts is worse than one that fails the build.
+ */
+function normaliseYamlDate(value: unknown): unknown {
+  if (!(value instanceof Date) || Number.isNaN(value.getTime())) return value
+
+  const iso = value.toISOString()
+  return iso.endsWith('T00:00:00.000Z') ? iso.slice(0, 10) : iso
+}
+
+const isoDate = z.preprocess(
+  normaliseYamlDate,
+  z
+    .string('ожидается дата в формате YYYY-MM-DD')
+    .regex(DATE_FORMAT, 'ожидается формат YYYY-MM-DD')
+    .refine(
+      // Guarded by the format test so a malformed date reports one problem
+      // rather than two: without the guard, "12.03.2026" fails the regex *and*
+      // the calendar check, and the reader has to work out that these are the
+      // same mistake described twice.
+      (value) => !DATE_FORMAT.test(value) || isRealCalendarDate(value),
+      'такой календарной даты не существует',
+    ),
+)
 
 function isRealCalendarDate(value: string): boolean {
   const parsed = new Date(`${value}T00:00:00Z`)
