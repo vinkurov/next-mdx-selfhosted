@@ -119,6 +119,98 @@ h4:hover > .heading-anchor,
   }
 }
 
+/*
+ * Article typography.
+ *
+ * Written out rather than pulling in @tailwindcss/typography. The plugin is
+ * excellent and roughly two hundred styles, of which a content site in one
+ * language uses perhaps fifteen — and every one of its defaults then has to be
+ * overridden to match the design. Forty lines here is less code than the
+ * overrides would be, and there is no second opinion about what a paragraph
+ * looks like.
+ */
+.prose-article {
+  font-size: 1.0625rem;
+  line-height: 1.7;
+}
+
+.prose-article > * + * {
+  margin-top: 1.15em;
+}
+
+.prose-article h2 {
+  margin-top: 2.25em;
+  font-size: 1.375rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.prose-article h3 {
+  margin-top: 1.75em;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.prose-article a {
+  color: var(--color-accent);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.prose-article ul,
+.prose-article ol {
+  padding-left: 1.35em;
+}
+
+.prose-article ul {
+  list-style: disc;
+}
+
+.prose-article ol {
+  list-style: decimal;
+}
+
+.prose-article li + li {
+  margin-top: 0.4em;
+}
+
+.prose-article blockquote {
+  padding-left: 1em;
+  border-left: 3px solid var(--color-rule);
+  color: var(--color-ink-muted);
+}
+
+.prose-article table {
+  display: block;
+  /* Wide tables scroll inside the article instead of widening the page. */
+  overflow-x: auto;
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+}
+
+.prose-article th,
+.prose-article td {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-rule);
+  text-align: left;
+  vertical-align: top;
+}
+
+.prose-article th {
+  background: var(--color-paper-sunken);
+  font-weight: 600;
+}
+
+.prose-article hr {
+  border: 0;
+  border-top: 1px solid var(--color-rule);
+}
+
+.prose-article strong {
+  font-weight: 600;
+}
+
 code:not(pre code) {
   padding: 0.15em 0.35em;
   border-radius: 0.25rem;
