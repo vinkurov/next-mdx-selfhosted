@@ -1,0 +1,14 @@
+node_modules
+.next
+.git
+.github
+coverage
+*.log
+.env
+.env.*
+!.env.example
+.DS_Store
+
+# Note what is *not* here: `content/` and `public/` are required by the builder
+# stage. Excluding them is an easy mistake that produces an image which builds
+# fine and serves an empty site.
