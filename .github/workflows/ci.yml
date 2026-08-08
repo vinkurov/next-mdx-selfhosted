@@ -58,30 +58,46 @@ jobs:
       # different directory than the HTML, and the emitted canonical URLs are
       # absolute. Serving the build sidesteps all three and checks the addresses
       # readers actually get.
+      # setsid + nohup, not a bare `&`. A background job started with `&` belongs
+      # to the step's process group and dies when the step's shell exits, so the
+      # next step finds nothing listening — which is exactly how this failed the
+      # first time, and it failed as an empty file rather than as an error.
       - name: Start the built site
         run: |
-          npx next start -p 3000 &
-          echo $! > .server.pid
+          setsid nohup npx next start -p 3000 > server.log 2>&1 < /dev/null &
           for i in $(seq 1 60); do
             if curl -sf -o /dev/null http://localhost:3000/; then
               echo "server up after ${i}s"
-              exit 0
+              break
+            fi
+            if [ "$i" -eq 60 ]; then
+              echo "server did not start within 60s" >&2
+              cat server.log >&2
+              exit 1
             fi
             sleep 1
           done
-          echo "server did not start within 60s" >&2
-          exit 1
 
       # The page list comes from the sitemap, which is itself generated from the
       # content layer. So a new article is link-checked automatically, and a page
       # missing from the sitemap is a separate bug this would also surface.
       - name: Collect page URLs
         run: |
-          curl -sf http://localhost:3000/sitemap.xml \
-            | grep -o '<loc>[^<]*</loc>' \
+          if ! curl -sf http://localhost:3000/sitemap.xml -o sitemap-snapshot.xml; then
+            echo "sitemap unreachable — the server is not running" >&2
+            cat server.log >&2
+            exit 1
+          fi
+
+          grep -o '<loc>[^<]*</loc>' sitemap-snapshot.xml \
             | sed 's|</*loc>||g' \
             > link-check-urls.txt
-          test -s link-check-urls.txt
+
+          if [ ! -s link-check-urls.txt ]; then
+            echo "no <loc> entries found in the sitemap:" >&2
+            cat sitemap-snapshot.xml >&2
+            exit 1
+          fi
           cat link-check-urls.txt
 
       - name: Check links
@@ -98,4 +114,4 @@ jobs:
 
       - name: Stop the built site
         if: always()
-        run: kill "$(cat .server.pid)" || true
+        run: pkill -f 'next start' || true
