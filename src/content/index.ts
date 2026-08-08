@@ -129,38 +129,74 @@ function isNotFound(error: unknown): boolean {
   )
 }
 
-async function parseArticle(locale: string, file: string): Promise<Article> {
+/**
+ * Either a parsed document or the reasons it could not be parsed.
+ *
+ * Both the build and `scripts/validate-content.ts` go through the functions
+ * below, which is the whole reason this result type exists instead of the parse
+ * simply throwing. The build wants to stop at the first bad document; the
+ * validation script wants to list every problem in one run so an author fixes
+ * them all at once. Giving the script its own walk would eventually let the two
+ * disagree about what "valid" means — and the disagreement would show up as CI
+ * passing while the build fails.
+ */
+type ParseResult<T> = { ok: true; value: T } | { ok: false; problems: string[] }
+
+async function tryParseArticle(
+  locale: string,
+  file: string,
+): Promise<ParseResult<Article>> {
   const { data, content } = matter(await readFile(file, 'utf8'))
   const parsed = ArticleFrontmatter.safeParse(data)
 
   if (!parsed.success) {
-    throw new ContentError(relative(file), describeIssues(parsed.error, data))
+    return { ok: false, problems: describeIssues(parsed.error, data) }
   }
 
-  const slug = path.basename(file, '.mdx')
   if (parsed.data.locale !== locale) {
-    throw new ContentError(relative(file), [
-      `locale: файл лежит в content/${locale}/, но объявлена локаль "${parsed.data.locale}"`,
-    ])
+    return {
+      ok: false,
+      problems: [
+        `locale: файл лежит в content/${locale}/, но объявлена локаль "${parsed.data.locale}"`,
+      ],
+    }
   }
 
   return {
-    ...parsed.data,
-    slug,
-    readingTimeMin: estimateReadingTime(content),
-    body: content,
+    ok: true,
+    value: {
+      ...parsed.data,
+      slug: path.basename(file, '.mdx'),
+      readingTimeMin: estimateReadingTime(content),
+      body: content,
+    },
   }
 }
 
-async function parsePage(file: string): Promise<Page> {
+async function tryParsePage(file: string): Promise<ParseResult<Page>> {
   const { data, content } = matter(await readFile(file, 'utf8'))
   const parsed = PageFrontmatter.safeParse(data)
 
   if (!parsed.success) {
-    throw new ContentError(relative(file), describeIssues(parsed.error, data))
+    return { ok: false, problems: describeIssues(parsed.error, data) }
   }
 
-  return { ...parsed.data, slug: path.basename(file, '.mdx'), body: content }
+  return {
+    ok: true,
+    value: { ...parsed.data, slug: path.basename(file, '.mdx'), body: content },
+  }
+}
+
+async function parseArticle(locale: string, file: string): Promise<Article> {
+  const result = await tryParseArticle(locale, file)
+  if (!result.ok) throw new ContentError(relative(file), result.problems)
+  return result.value
+}
+
+async function parsePage(file: string): Promise<Page> {
+  const result = await tryParsePage(file)
+  if (!result.ok) throw new ContentError(relative(file), result.problems)
+  return result.value
 }
 
 function relative(file: string): string {
@@ -239,4 +275,33 @@ export async function getAllArticlesForTooling(): Promise<Article[]> {
 
 export async function getAllPagesForTooling(): Promise<Page[]> {
   return [...(await load()).pages.values()]
+}
+
+export interface ContentProblem {
+  /** Repository-relative path, so the output can be pasted into an editor. */
+  file: string
+  problems: string[]
+}
+
+/**
+ * Validates every document and returns all problems instead of throwing.
+ *
+ * Continues past the first bad file on purpose: an author who added three
+ * articles wants all three sets of mistakes from one CI run, not one per push.
+ */
+export async function collectContentProblems(): Promise<ContentProblem[]> {
+  const found: ContentProblem[] = []
+
+  for (const locale of LOCALES) {
+    for (const file of await listMdx(path.join(CONTENT_ROOT, locale, 'articles'))) {
+      const result = await tryParseArticle(locale, file)
+      if (!result.ok) found.push({ file: relative(file), problems: result.problems })
+    }
+    for (const file of await listMdx(path.join(CONTENT_ROOT, locale, 'pages'))) {
+      const result = await tryParsePage(file)
+      if (!result.ok) found.push({ file: relative(file), problems: result.problems })
+    }
+  }
+
+  return found
 }
