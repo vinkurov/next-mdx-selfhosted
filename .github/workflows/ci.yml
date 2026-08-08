@@ -64,9 +64,10 @@ jobs:
           # repository should behave the same a year from now.
           LYCHEE_VERSION: lychee-v0.24.2
         run: |
+          target=lychee-x86_64-unknown-linux-gnu
           curl -sSfL \
-            "https://github.com/lycheeverse/lychee/releases/download/${LYCHEE_VERSION}/lychee-x86_64-unknown-linux-gnu.tar.gz" \
-            | tar -xz lychee
+            "https://github.com/lycheeverse/lychee/releases/download/${LYCHEE_VERSION}/${target}.tar.gz" \
+            | tar -xz --strip-components=1 "${target}/lychee"
           ./lychee --version
 
       # Server startup, URL collection and link checking are one step on purpose.
