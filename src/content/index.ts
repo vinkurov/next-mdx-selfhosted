@@ -142,11 +142,59 @@ function isNotFound(error: unknown): boolean {
  */
 type ParseResult<T> = { ok: true; value: T } | { ok: false; problems: string[] }
 
+/**
+ * Splits frontmatter from body, turning a YAML syntax error into a readable one.
+ *
+ * Without this, a malformed frontmatter block escapes as a js-yaml exception and
+ * prints a forty-line stack trace with no file name in it — which is precisely
+ * the failure mode this project claims to have removed. A promise of readable
+ * validation that only covers *semantic* errors and not syntax ones is a promise
+ * that breaks the first time somebody writes an unquoted colon.
+ *
+ * The colon hint is there because that is the mistake in practice: a title like
+ * `Next.js с MDX: что решить` is valid prose and invalid YAML, and the parser's
+ * own wording ("incomplete explicit mapping pair") does not help anyone.
+ */
+function readDocument(
+  raw: string,
+): ParseResult<{ data: Record<string, unknown>; content: string }> {
+  try {
+    const { data, content } = matter(raw)
+    return { ok: true, value: { data, content } }
+  } catch (error) {
+    const reason =
+      typeof error === 'object' && error !== null && 'reason' in error
+        ? String((error as { reason: unknown }).reason)
+        : String(error)
+
+    const line =
+      typeof error === 'object' &&
+      error !== null &&
+      'mark' in error &&
+      typeof (error as { mark?: { line?: number } }).mark?.line === 'number'
+        ? // js-yaml counts from zero; humans and editors count from one, and the
+          // frontmatter block starts after the opening `---`.
+          ((error as { mark: { line: number } }).mark.line ?? 0) + 2
+        : null
+
+    return {
+      ok: false,
+      problems: [
+        `frontmatter: не разбирается как YAML${line === null ? '' : ` (строка ${line})`} — ${reason}`,
+        'подсказка: значение с двоеточием нужно взять в кавычки — title: "Что-то: и ещё"',
+      ],
+    }
+  }
+}
+
 async function tryParseArticle(
   locale: string,
   file: string,
 ): Promise<ParseResult<Article>> {
-  const { data, content } = matter(await readFile(file, 'utf8'))
+  const document = readDocument(await readFile(file, 'utf8'))
+  if (!document.ok) return document
+
+  const { data, content } = document.value
   const parsed = ArticleFrontmatter.safeParse(data)
 
   if (!parsed.success) {
@@ -174,7 +222,10 @@ async function tryParseArticle(
 }
 
 async function tryParsePage(file: string): Promise<ParseResult<Page>> {
-  const { data, content } = matter(await readFile(file, 'utf8'))
+  const document = readDocument(await readFile(file, 'utf8'))
+  if (!document.ok) return document
+
+  const { data, content } = document.value
   const parsed = PageFrontmatter.safeParse(data)
 
   if (!parsed.success) {
