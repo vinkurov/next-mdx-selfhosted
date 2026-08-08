@@ -7,10 +7,19 @@
 
 	# Media is content-addressed by path and never mutated in place — a changed
 	# image gets a new filename — so it can be cached immutably for a year. This
-	# is the single largest win available for a content site, and it is three
+	# is the single largest win available for a content site, and it is four
 	# lines.
-	handle_path /media/* {
-		header Cache-Control "public, max-age=31536000, immutable"
+	#
+	# `handle`, not `handle_path`. The difference is easy to miss and produces a
+	# clean 404 on every image: `handle_path` strips the matched prefix before
+	# proxying, so /media/x.png arrives upstream as /x.png, while Next serves it
+	# from public/media at /media/x.png. Verified by requesting an image through
+	# the running stack rather than by reading the config.
+	handle /media/* {
+		# `>` replaces rather than appends. Without it the response carries two
+		# Cache-Control headers — ours and the one Next sets — and a client is
+		# free to honour either, which makes the caching behaviour a coin flip.
+		header >Cache-Control "public, max-age=31536000, immutable"
 		reverse_proxy web:3000
 	}
 
