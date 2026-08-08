@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+  <rect width="1200" height="760" fill="#ffffff"/>
+
+  <text x="48" y="56" font-size="26" font-weight="600" fill="#16181d">Путь материала от файла до статической страницы</text>
+  <text x="48" y="86" font-size="16" fill="#5b6270">Всё слева от пунктира происходит на сборке. В рантайме остаётся только отдача готового HTML.</text>
+
+  <line x1="48" y1="112" x2="1152" y2="112" stroke="#e3e6eb" stroke-width="1"/>
+
+  <!-- build-time column -->
+  <text x="48" y="150" font-size="13" font-weight="600" fill="#1f5fd0" letter-spacing="1">НА СБОРКЕ</text>
+
+  <!-- content -->
+  <rect x="48" y="170" width="250" height="120" rx="10" fill="#f6f7f9" stroke="#e3e6eb"/>
+  <text x="68" y="200" font-size="16" font-weight="600" fill="#16181d">content/ru/</text>
+  <text x="68" y="226" font-size="14" fill="#5b6270" font-family="ui-monospace, Menlo, monospace">articles/*.mdx</text>
+  <text x="68" y="248" font-size="14" fill="#5b6270" font-family="ui-monospace, Menlo, monospace">pages/*.mdx</text>
+  <text x="68" y="274" font-size="13" fill="#5b6270">вне app/ — URL не зависят от папок</text>
+
+  <!-- arrow 1 -->
+  <path d="M298 230 H 358" stroke="#5b6270" stroke-width="2" marker-end="url(#a)"/>
+
+  <!-- loader -->
+  <rect x="358" y="150" width="270" height="160" rx="10" fill="#ffffff" stroke="#1f5fd0" stroke-width="2"/>
+  <text x="378" y="180" font-size="16" font-weight="600" fill="#16181d">src/content/index.ts</text>
+  <text x="378" y="205" font-size="13" fill="#5b6270">gray-matter → Zod → сортировка</text>
+  <text x="378" y="227" font-size="13" fill="#5b6270">фильтр status: draft</text>
+  <text x="378" y="249" font-size="13" fill="#5b6270">расчёт времени чтения</text>
+  <rect x="378" y="264" width="230" height="30" rx="6" fill="#f6f7f9"/>
+  <text x="390" y="284" font-size="12.5" fill="#16181d" font-family="ui-monospace, Menlo, monospace">4 функции — весь контракт</text>
+
+  <!-- validation branch -->
+  <path d="M493 310 V 372" stroke="#5b6270" stroke-width="2" marker-end="url(#a)"/>
+  <rect x="358" y="372" width="270" height="86" rx="10" fill="#fff8f0" stroke="#e0a350"/>
+  <text x="378" y="400" font-size="15" font-weight="600" fill="#16181d">content:check</text>
+  <text x="378" y="423" font-size="13" fill="#5b6270">те же схемы, все ошибки за один</text>
+  <text x="378" y="443" font-size="13" fill="#5b6270">прогон, exit 1 — шаг в CI</text>
+
+  <!-- arrow 2 -->
+  <path d="M628 230 H 688" stroke="#5b6270" stroke-width="2" marker-end="url(#a)"/>
+
+  <!-- mdx -->
+  <rect x="688" y="150" width="250" height="160" rx="10" fill="#f6f7f9" stroke="#e3e6eb"/>
+  <text x="708" y="180" font-size="16" font-weight="600" fill="#16181d">MDX → компонент</text>
+  <text x="708" y="205" font-size="13" fill="#5b6270">remark-gfm</text>
+  <text x="708" y="227" font-size="13" fill="#5b6270">rehype-slug + autolink</text>
+  <text x="708" y="249" font-size="13" fill="#5b6270">rehype-pretty-code (Shiki)</text>
+  <rect x="708" y="264" width="210" height="30" rx="6" fill="#ffffff" stroke="#e3e6eb"/>
+  <text x="720" y="284" font-size="12.5" fill="#16181d" font-family="ui-monospace, Menlo, monospace">Figure · Video · Callout</text>
+
+  <!-- arrow 3 -->
+  <path d="M938 230 H 998" stroke="#5b6270" stroke-width="2" marker-end="url(#a)"/>
+
+  <!-- static output -->
+  <rect x="998" y="170" width="154" height="120" rx="10" fill="#eef4ff" stroke="#1f5fd0"/>
+  <text x="1018" y="200" font-size="15" font-weight="600" fill="#16181d">.next/</text>
+  <text x="1018" y="223" font-size="13" fill="#5b6270">standalone</text>
+  <text x="1018" y="245" font-size="13" fill="#5b6270">готовый HTML</text>
+  <text x="1018" y="272" font-size="12.5" fill="#5b6270">SSG, без ISR</text>
+
+  <!-- runtime divider -->
+  <line x1="48" y1="520" x2="1152" y2="520" stroke="#5b6270" stroke-width="1.5" stroke-dasharray="7 6"/>
+  <text x="48" y="558" font-size="13" font-weight="600" fill="#1f5fd0" letter-spacing="1">В РАНТАЙМЕ</text>
+
+  <rect x="48" y="578" width="300" height="112" rx="10" fill="#f6f7f9" stroke="#e3e6eb"/>
+  <text x="68" y="608" font-size="16" font-weight="600" fill="#16181d">caddy</text>
+  <text x="68" y="632" font-size="13" fill="#5b6270">TLS автоматически, zstd/gzip</text>
+  <text x="68" y="654" font-size="13" fill="#5b6270">/media/* — immutable на год</text>
+  <text x="68" y="676" font-size="13" fill="#5b6270">порты 80/443, единственный вход</text>
+
+  <path d="M348 634 H 408" stroke="#5b6270" stroke-width="2" marker-end="url(#a)"/>
+
+  <rect x="408" y="578" width="300" height="112" rx="10" fill="#f6f7f9" stroke="#e3e6eb"/>
+  <text x="428" y="608" font-size="16" font-weight="600" fill="#16181d">web · node server.js</text>
+  <text x="428" y="632" font-size="13" fill="#5b6270">только .next/standalone + public</text>
+  <text x="428" y="654" font-size="13" fill="#5b6270">USER node, порты не публикуются</text>
+  <text x="428" y="676" font-size="13" fill="#5b6270">next/image — кэш в томе</text>
+
+  <rect x="768" y="578" width="384" height="112" rx="10" fill="#ffffff" stroke="#e3e6eb" stroke-dasharray="5 4"/>
+  <text x="788" y="608" font-size="15" font-weight="600" fill="#5b6270">Чего в рантайме нет</text>
+  <text x="788" y="632" font-size="13" fill="#5b6270">ни базы, ни CMS, ни MDX-тулчейна,</text>
+  <text x="788" y="654" font-size="13" fill="#5b6270">ни TypeScript, ни Tailwind —</text>
+  <text x="788" y="676" font-size="13" fill="#5b6270">всё осталось в builder-стадии</text>
+
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#5b6270"/>
+    </marker>
+  </defs>
+</svg>
