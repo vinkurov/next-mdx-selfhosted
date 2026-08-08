@@ -58,28 +58,42 @@ jobs:
       # different directory than the HTML, and the emitted canonical URLs are
       # absolute. Serving the build sidesteps all three and checks the addresses
       # readers actually get.
-      # Runs the standalone server, not `next start` — the latter refuses to work
-      # with output: 'standalone' and says so only in its own log.
-      #
-      # This is the better arrangement anyway: the links are checked against the
-      # exact artefact the Docker image serves, so a problem that exists only in
-      # the deployed bundle cannot hide behind a dev server. The two `cp` lines
-      # mirror what the Dockerfile's runner stage copies.
-      #
-      # setsid + nohup, not a bare `&`. A background job started with `&` belongs
-      # to the step's process group and dies when the step's shell exits, so the
-      # next step finds nothing listening.
-      - name: Start the built site
+      - name: Install lychee
+        env:
+          # Pinned for the same reason the npm dependencies are: a reference
+          # repository should behave the same a year from now.
+          LYCHEE_VERSION: lychee-v0.24.2
         run: |
+          curl -sSfL \
+            "https://github.com/lycheeverse/lychee/releases/download/${LYCHEE_VERSION}/lychee-x86_64-unknown-linux-gnu.tar.gz" \
+            | tar -xz lychee
+          ./lychee --version
+
+      # Server startup, URL collection and link checking are one step on purpose.
+      # A background process does not reliably survive the end of the step that
+      # started it — neither a bare `&` nor `setsid nohup` was enough — so the
+      # server has to live and die inside the step that uses it. That is also why
+      # lychee is a downloaded binary here rather than the official action, which
+      # would necessarily be a separate step.
+      #
+      # The standalone bundle is served rather than `next start`, which refuses to
+      # run with output: 'standalone'. Checking this artefact is the better
+      # arrangement anyway: it is exactly what the Docker image serves, so a
+      # problem present only in the deployed bundle cannot hide behind a dev
+      # server. The two `cp` lines mirror the Dockerfile's runner stage.
+      - name: Check links against the served build
+        run: |
+          set -o pipefail
+
           cp -r .next/static .next/standalone/.next/static
           cp -r public .next/standalone/public
-          PORT=3000 HOSTNAME=127.0.0.1 \
-            setsid nohup node .next/standalone/server.js > server.log 2>&1 < /dev/null &
+
+          PORT=3000 HOSTNAME=127.0.0.1 node .next/standalone/server.js > server.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+
           for i in $(seq 1 60); do
-            if curl -sf -o /dev/null http://localhost:3000/; then
-              echo "server up after ${i}s"
-              break
-            fi
+            curl -sf -o /dev/null http://localhost:3000/ && break
             if [ "$i" -eq 60 ]; then
               echo "server did not start within 60s" >&2
               cat server.log >&2
@@ -88,19 +102,11 @@ jobs:
             sleep 1
           done
 
-      # The page list comes from the sitemap, which is itself generated from the
-      # content layer. So a new article is link-checked automatically, and a page
-      # missing from the sitemap is a separate bug this would also surface.
-      - name: Collect page URLs
-        run: |
-          if ! curl -sf http://localhost:3000/sitemap.xml -o sitemap-snapshot.xml; then
-            echo "sitemap unreachable — the server is not running" >&2
-            cat server.log >&2
-            exit 1
-          fi
-
-          grep -o '<loc>[^<]*</loc>' sitemap-snapshot.xml \
-            | sed 's|</*loc>||g' \
+          # The page list comes from the sitemap, which is generated from the
+          # content layer — so a new article is link-checked automatically, and a
+          # page missing from the sitemap is a separate bug this also surfaces.
+          curl -sf http://localhost:3000/sitemap.xml -o sitemap-snapshot.xml
+          grep -o '<loc>[^<]*</loc>' sitemap-snapshot.xml | sed 's|</*loc>||g' \
             > link-check-urls.txt
 
           if [ ! -s link-check-urls.txt ]; then
@@ -108,20 +114,8 @@ jobs:
             cat sitemap-snapshot.xml >&2
             exit 1
           fi
+          echo "проверяются страницы:"
           cat link-check-urls.txt
 
-      - name: Check links
-        uses: lycheeverse/lychee-action@v2
-        with:
-          args: >-
-            --no-progress
-            --include-fragments
-            --max-retries 2
-            link-check-urls.txt
-            README.md
-            docs/architecture.md
-          fail: true
-
-      - name: Stop the built site
-        if: always()
-        run: pkill -f 'standalone/server.js' || true
+          ./lychee --no-progress --include-fragments --max-retries 2 \
+            link-check-urls.txt README.md docs/architecture.md
